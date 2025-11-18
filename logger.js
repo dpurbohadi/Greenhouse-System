@@ -22,6 +22,80 @@ app.use(session({
   saveUninitialized: true
 }));
 
+initConn.connect(function (err) {
+    if (err) {
+        console.error('Gagal konek saat inisialisasi:', err.stack);
+        return;
+    }
+
+    // Buat database
+    initConn.query('CREATE DATABASE IF NOT EXISTS datalogger', function (err) {
+        if (err) {
+            console.error('Gagal membuat database datalogger:', err.stack);
+            return;
+        }
+
+        // Pilih database
+        initConn.query('USE datalogger', function (err) {
+            if (err) {
+                console.error('Gagal memilih database datalogger:', err.stack);
+                return;
+            }
+
+            // Buat tabel user
+            var createUserTable = `
+                CREATE TABLE IF NOT EXISTS user (
+                    id INT AUTO_INCREMENT PRIMARY KEY,
+                    firstname VARCHAR(100),
+                    lastname VARCHAR(100),
+                    address TEXT,
+                    phone VARCHAR(50),
+                    email VARCHAR(150),
+                    username VARCHAR(100),
+                    password VARCHAR(255),
+                    active TINYINT,
+                    created_date DATETIME,
+                    last_access DATETIME,
+                    longitude VARCHAR(50),
+                    latitude VARCHAR(50),
+                    apikey VARCHAR(255)
+                )
+            `;
+            initConn.query(createUserTable, function (err) {
+                if (err) {
+                    console.error('Gagal membuat tabel user:', err.stack);
+                    return;
+                }
+
+                // Buat tabel logger
+                var createLoggerTable = `
+                    CREATE TABLE IF NOT EXISTS logger (
+                        id INT AUTO_INCREMENT PRIMARY KEY,
+                        station_id VARCHAR(100),
+                        data_id VARCHAR(100),
+                        gdate DATE,
+                        gtime TIME,
+                        v1 DOUBLE,
+                        v2 DOUBLE,
+                        v3 DOUBLE,
+                        v4 DOUBLE,
+                        v5 DOUBLE,
+                        type VARCHAR(50)
+                    )
+                `;
+                initConn.query(createLoggerTable, function (err) {
+                    if (err) {
+                        console.error('Gagal membuat tabel logger:', err.stack);
+                        return;
+                    }
+                    console.log('Database dan tabel siap dipakai');
+                    initConn.end();
+                });
+            });
+        });
+    });
+});
+
 app.use(cors());
 app.use(bodyParser.urlencoded({ extended: false }));
 app.use(bodyParser.json());
@@ -34,7 +108,6 @@ app.get('/datalogger/green.css', (req, res) => {
     res.set('Content-Type', 'text/css');
     res.sendFile(path.join(__dirname, 'datalogger/green.css'));
 });
-
 
 app.get('/datalogger/stations', (req, res) => {
     const sql = `
@@ -112,9 +185,6 @@ app.put('/datalogger/update-station/:username', (req, res) => {
     });
 });
 
-
-
-
 app.get('/datalogger/test', (req, res) => {
   const sql = 'INSERT INTO logger (station_id, data_id, gdate, gtime, v1, v2, v3, v4, v5, type) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)';
   db.query(sql, ["test", "test01", "02/03/2024", "00.01", "1", "2", "3", "4", "5", "dummy"], (err, result) => {
@@ -144,7 +214,6 @@ app.post('/datalogger/login', (req, res) => {
     }
   });
 });
-
 
 app.post('/datalogger/store', (req, res) => {
   const data = req.body;
